@@ -1,57 +1,56 @@
 import discord
 import os
-import requests
 from discord import option
+from flask import Flask, request
+from threading import Thread
 
 bot = discord.Bot()
-# Renderの環境変数からAPIのURLを取得
-API_URL = os.environ.get("VLR_GG_API", "https://vlrggapi.onrender.com")
 
-@bot.slash_command(name="vct_analytics", description="VCT公式大会の最新データからマップ別の勝率TOP5構成を表示します")
+# 初期データ
+MAP_CACHE = {m: "データ更新待ち..." for m in ["ascent", "bind", "haven", "icebox", "lotus", "sunset", "abyss"]}
+
+@bot.slash_command(name="vct_analytics", description="VCT最新統計を即座に表示します")
 @option("map_name", description="マップ名を選択", choices=["ascent", "bind", "haven", "icebox", "lotus", "sunset", "abyss"])
 async def vct_analytics(ctx, map_name: str):
-    await ctx.defer()
+    data = MAP_CACHE.get(map_name)
     
-    # VLR.gg APIのv2/statsから直近30日のデータを取得
-    # timespan=30d で最新のパッチ環境に絞り込みます
-    url = f"{API_URL}/v2/stats?timespan=30d&event_group=vct"
-    
-    try:
-        response = requests.get(url)
-        data = response.json()
-        
-        # APIから取得した生データから、指定されたマップの統計を解析
-        # ※ここではAPIのレスポンス形式に合わせて、そのマップで最も勝っている構成を抽出します
-        # 実際にはAPIが返す 'segments' データをループして計算します
-        
-        embed = discord.Embed(
-            title=f"📊 {map_name.upper()} 最新VCT統計 (直近30日)",
-            description=f"VLR.ggの最新リザルトから抽出した、**{map_name}** のガチ構成です。",
-            color=0xff4654
-        )
+    embed = discord.Embed(
+        title=f"📊 {map_name.upper()} リアルタイム統計",
+        description=data,
+        color=0x00ff00
+    )
+    embed.set_footer(text="🕒 マップ別に順次ローテーション更新中")
+    await ctx.respond(embed=embed)
 
-        # データの解析と表示（APIの構造に基づいた動的な抽出）
-        # ※APIの仕様上、特定のチーム構成を直接出すには計算が必要なため、
-        # ここでは最新の「ピック率上位5エージェント」と「平均勝率」をリアルタイムで算出します
-        
-        # サンプルとして現在のAPIから引ける最新のメタ情報を構築
-        # 実際にはここで response.json() の中身を処理します
-        
-        embed.add_field(
-            name="🔥 現在のトレンド構成 (Most Picked)",
-            value="APIからのリアルタイムデータを取得中...", # ここに解析結果が入ります
-            inline=False
-        )
-        
-        embed.set_footer(text="Data fetched live from VLR.gg")
-        await ctx.followup.send(embed=embed)
-        
-    except Exception as e:
-        await ctx.followup.send(f"最新データの取得中にエラーが発生しました: {e}")
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "KAY/O Bot is Active"
+
+# 1つのマップを更新する専用の窓口
+@app.route('/update_single_map', methods=['POST'])
+def update_single_map():
+    global MAP_CACHE
+    payload = request.json
+    m_name = payload.get("map")
+    m_data = payload.get("data")
+    
+    if m_name and m_data:
+        MAP_CACHE[m_name] = m_data
+        print(f"Updated cache for: {m_name}")
+        return "Update Success", 200
+    return "Update Failed", 400
+
+def run():
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
 
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
     await bot.sync_commands()
 
-bot.run(os.environ.get("DISCORD_TOKEN"))
+if __name__ == "__main__":
+    t = Thread(target=run)
+    t.start()
+    bot.run(os.environ.get("DISCORD_TOKEN"))
