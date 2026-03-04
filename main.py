@@ -10,8 +10,13 @@ bot = discord.Bot()
 # マップデータの保存先
 MAP_CACHE = {m: "🌎 世界中の最新統計を統合中です。数分後にお試しください..." for m in ["ascent", "bind", "haven", "icebox", "lotus", "sunset", "abyss"]}
 
-@bot.slash_command(name="vct_analytics", description="世界4大リーグを統合した最新統計を表示します")
-@option("map_name", description="マップ名を選択", choices=["ascent", "bind", "haven", "icebox", "lotus", "sunset", "abyss"])
+@bot.slash_command(name="vct_analytics", description="世界統合メタ統計を表示します")
+@option("map_name", description="マップ名を選択", choices=[
+    "ascent", "bind", "haven", "icebox", "lotus", "sunset", "abyss", 
+    "fracture", "pearl", "split", "breeze", "corrode"  # ← 全マップ完備！
+])
+async def vct_analytics(ctx, map_name: str):
+    # ・・・（以下、前回と同じ処理）・・・
 async def vct_analytics(ctx, map_name: str):
     data = MAP_CACHE.get(map_name)
     
