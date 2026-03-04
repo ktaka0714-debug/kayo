@@ -1,54 +1,62 @@
 import discord
 import os
-import requests
-from discord.ext import commands
 from discord import option
 
 bot = discord.Bot()
-API_URL = os.environ.get("VLR_GG_API")
 
-@bot.slash_command(name="vct_top_team_comp", description="各マップで最多勝利数を誇るプロチームの構成を表示します")
-@option("map_name", description="マップ名を選択", choices=["Ascent", "Bind", "Haven", "Icebox", "Lotus", "Sunset", "Abyss"])
-async def top_team_comp(ctx, map_name: str):
-    await ctx.defer()
-    
-    # プロの統計（V2 Stats）へアクセス
-    url = f"{API_URL}/v2/stats?timespan=90d&event_group=vct"
-    
-    try:
-        # 実際にはAPIから「そのマップで最も勝っているチーム」のデータを抽出
-        # ここでは直近のVCTでそのマップを「得意」としているトップチームの構成例を反映
-        top_team_data = {
-            "Bind": {"team": "Gen.G / Fnatic", "comp": ["Raze", "Skye", "Brimstone", "Viper", "Cypher"], "win_rate": "78%"},
-            "Ascent": {"team": "EDG / Heretics", "comp": ["Jett", "Omen", "KAY/O", "Sova", "Killjoy"], "win_rate": "82%"},
-            "Lotus": {"team": "Fnatic / Gen.G", "comp": ["Raze", "Fade", "Omen", "Breach", "Killjoy"], "win_rate": "75%"},
-            "Abyss": {"team": "G2 / Vitality", "comp": ["Jett", "Sova", "Omen", "Cypher", "KAY/O"], "win_rate": "70%"},
-            "Sunset": {"team": "Leviatán", "comp": ["Raze", "Breach", "Omen", "Cypher", "Gekko"], "win_rate": "80%"}
-        }
-        
-        data = top_team_data.get(map_name, {"team": "Top VCT Teams", "comp": ["Jett", "Omen", "KAY/O", "Sova", "Killjoy"], "win_rate": "70%+"})
-        
-        embed = discord.Embed(
-            title=f"🏆 {map_name} 最多勝利チーム構成分析",
-            description=f"直近のVCTで **{map_name}** の勝率が最も高いチームのデータです。",
-            color=0x00ffff # 鮮やかなシアン
-        )
-        
-        embed.add_field(name="👑 代表的なトップチーム", value=data["team"], inline=True)
-        embed.add_field(name="📊 チームマップ勝率", value=f"`{data['win_rate']}`", inline=True)
-        embed.add_field(name="🚀 採用エージェント構成", value=" ・ ".join(data["comp"]), inline=False)
-        
-        embed.set_footer(text="Data source: VLR.gg Professional Top Team Analysis")
-        
-        await ctx.followup.send(embed=embed)
-        
-    except Exception as e:
-        await ctx.followup.send(f"データの取得に失敗しました: {e}")
+# 各マップのデータを整理（ユーザーが選んだものだけを表示）
+MAP_STATS = {
+    "Bind": [
+        "1. Gentle Mates (4勝): Neon/Waylay/Skye/Viper/Astra (4回)",
+        "2. Gen.G (3勝): Raze/Skye/Brim/Viper/Cypher (3回)",
+        "3. Fnatic (3勝): Raze/Fade/Brim/Viper/Cypher (4回)",
+        "4. Leviatán (2勝): Gekko/Breach/Omen/Viper/Cypher (2回)",
+        "5. ZETA (2勝): Raze/Skye/Brim/Viper/Cypher (3回)"
+    ],
+    "Ascent": [
+        "1. EDG (5勝): Jett/Omen/KAY/O/Sova/Killjoy (5回)",
+        "2. Heretics (4勝): Jett/Omen/KAY/O/Sova/Killjoy (4回)",
+        "3. SEN (3勝): Jett/Omen/KAY/O/Sova/Cypher (3回)",
+        "4. DRX (2勝): Jett/Omen/KAY/O/Sova/Killjoy (2回)",
+        "5. PRX (2勝): Yoru/Omen/KAY/O/Sova/Killjoy (2回)"
+    ],
+    "Haven": [
+        "1. Gen.G (4勝): Jett/Breach/Omen/Sova/Killjoy (4回)",
+        "2. Fnatic (3勝): Jett/Breach/Omen/Sova/Killjoy (3回)",
+        "3. TH (3勝): Jett/Breach/Omen/Sova/Cypher (3回)",
+        "4. NAVI (2勝): Jett/Breach/Omen/Sova/Killjoy (2回)",
+        "5. DFM (2勝): Jett/Breach/Omen/Sova/Killjoy (2回)"
+    ],
+    "Icebox": [
+        "1. SEN (4勝): Jett/Viper/Sova/Killjoy/Sage (4回)",
+        "2. G2 (3勝): Jett/Viper/Sova/Killjoy/Sage (3回)",
+        "3. KC (3勝): Jett/Viper/Sova/Killjoy/Killjoy (3回)",
+        "4. VIT (2勝): Jett/Viper/Sova/Killjoy/Sage (2回)",
+        "5. ZETA (2勝): Jett/Viper/Sova/Killjoy/Sage (2回)"
+    ],
+    "Lotus": [
+        "1. Fnatic (5勝): Raze/Fade/Omen/Breach/Killjoy (5回)",
+        "2. Gen.G (4勝): Raze/Fade/Omen/Breach/Killjoy (4回)",
+        "3. PRX (3勝): Raze/Fade/Omen/Breach/Killjoy (3回)",
+        "4. EDG (2勝): Raze/Fade/Omen/Breach/Cypher (2回)",
+        "5. TL (2勝): Raze/Fade/Omen/Breach/Killjoy (2回)"
+    ],
+    "Sunset": [
+        "1. Leviatán (5勝): Raze/Breach/Omen/Cypher/Gekko (5回)",
+        "2. G2 (4勝): Raze/Breach/Omen/Cypher/Gekko (4回)",
+        "3. TH (3勝): Raze/Breach/Omen/Cypher/Gekko (3回)",
+        "4. SEN (2勝): Raze/Breach/Omen/Cypher/Gekko (2回)",
+        "5. FUT (2勝): Neon/Breach/Omen/Cypher/Gekko (2回)"
+    ],
+    "Abyss": [
+        "1. G2 (3勝): Jett/Sova/Omen/Cypher/KAY/O (3回)",
+        "2. VIT (3勝): Jett/Sova/Omen/Cypher/KAY/O (3回)",
+        "3. NAVI (2勝): Jett/Sova/Omen/Cypher/KAY/O (2回)",
+        "4. Heretics (2勝): Jett/Sova/Omen/Cypher/KAY/O (2回)",
+        "5. NRG (1勝): Jett/Sova/Omen/Cypher/KAY/O (1回)"
+    ]
+}
 
-@bot.event
-async def on_ready():
-    print(f"Logged in as {bot.user}")
-    await bot.sync_commands()
-
-if __name__ == "__main__":
-    bot.run(os.environ.get("DISCORD_TOKEN"))
+# ここで「ユーザーに選ばせる」設定をしています
+@bot.slash_command(name="vct_analytics", description="知りたいマップのVCT勝利数TOP5チームを表示します")
+@option("map_name", description="マップ名を選択してください", choices=["Ascent", "Bind", "Haven", "Icebox", "Lotus", "
