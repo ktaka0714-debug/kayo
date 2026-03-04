@@ -1,52 +1,59 @@
-function myFunction() {
-  var maps = ["ascent", "bind", "haven", "icebox", "lotus", "sunset", "abyss"];
-  // 取得対象の全主要リージョン
-  var regions = ["ap", "eu", "na", "cn"]; 
-  var bot_url = "https://kayo-hvqt.onrender.com/update_single_map";
-  
-  var props = PropertiesService.getScriptProperties();
-  var currentIndex = parseInt(props.getProperty('MAP_INDEX') || "0");
-  var targetMap = maps[currentIndex];
+import discord
+import os
+from discord import option
+from flask import Flask, request
+from threading import Thread
 
-  try {
-    var allRegionStats = "";
+bot = discord.Bot()
+
+# 全マップのデータを保存（初期値）
+MAP_CACHE = {m: "🌎 世界中の統計を統合中です。数分後にお試しください..." for m in ["ascent", "bind", "haven", "icebox", "lotus", "sunset", "abyss"]}
+
+@bot.slash_command(name="vct_analytics", description="世界4大リーグ（Pacific/EMEA/Americas/CN）を統合した最新統計を表示します")
+@option("map_name", description="マップ名を選択", choices=["ascent", "bind", "haven", "icebox", "lotus", "sunset", "abyss"])
+async def vct_analytics(ctx, map_name: str):
+    data = MAP_CACHE.get(map_name)
     
-    // 各リージョンを順番に叩いてデータを集める
-    regions.forEach(function(reg) {
-      var api_url = "https://vlrggapi.onrender.com/v2/stats?region=" + reg + "&timespan=30d&event_group=vct";
-      var response = UrlFetchApp.fetch(api_url, {'muteHttpExceptions': true});
-      
-      if (response.getResponseCode() === 200) {
-        // 本来はここで各リージョンの勝率トップエージェントなどを抽出・計算します
-        // 今回は「各リージョンの概況」をまとめる形にします
-        allRegionStats += "🚩 **" + reg.toUpperCase() + "**: Meta Adjusted\n";
-      }
-    });
+    embed = discord.Embed(
+        title=f"🌎 {map_name.upper()} 世界統合メタ統計 (VCT 2026)",
+        description=data,
+        color=0xff4654
+    )
+    embed.set_footer(text="📊 配信元: Pacific, EMEA, Americas, CN 統合データ")
+    await ctx.respond(embed=embed)
 
-    // --- 世界統合データの整形 ---
-    var timestamp = new Date().toLocaleString("ja-JP", {timeZone: "Asia/Tokyo"});
-    var globalFormattedData = "📡 **世界4大リーグ統合メタデータ**\n" +
-                              allRegionStats + "\n" +
-                              "🏆 **" + targetMap.toUpperCase() + " 推奨構成**\n" +
-                              "・Jett / Omen / KAY/O / Sova / Killjoy\n\n" +
-                              "※Pacific, EMEA, Americas, CNの直近30日の試合から算出\n" +
-                              "最終更新: " + timestamp;
+# --- GASから最新データを受け取るための窓口 ---
+app = Flask('')
 
-    // ボットに送信
-    var payload = { "map": targetMap, "data": globalFormattedData };
-    UrlFetchApp.fetch(bot_url, {
-      'method' : 'post',
-      'contentType': 'application/json',
-      'payload' : JSON.stringify(payload),
-      'muteHttpExceptions': true
-    });
+@app.route('/')
+def home():
+    return "KAY/O Global Analytics Active"
 
-    // 次のマップへ
-    props.setProperty('MAP_INDEX', ((currentIndex + 1) % maps.length).toString());
-    Logger.log(targetMap + " の世界統合データを更新しました。");
+@app.route('/update_single_map', methods=['POST'])
+def update_single_map():
+    global MAP_CACHE
+    try:
+        payload = request.json
+        m_name = payload.get("map")
+        m_data = payload.get("data")
+        if m_name and m_data:
+            MAP_CACHE[m_name] = m_data
+            return "Update Success", 200
+    except Exception as e:
+        print(f"Update Error: {e}")
+    return "Update Failed", 400
 
-  } catch (e) {
-    Logger.log("エラー: " + e.message);
-    UrlFetchApp.fetch("https://kayo-hvqt.onrender.com/", {'muteHttpExceptions': true});
-  }
-}
+def run():
+    # Renderのポートに合わせてWebサーバーを起動
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+
+@bot.event
+async def on_ready():
+    print(f"Logged in as {bot.user}")
+    await bot.sync_commands()
+
+if __name__ == "__main__":
+    # ボットとWebサーバーを同時に動かす
+    t = Thread(target=run)
+    t.start()
+    bot.run(os.environ.get("DISCORD_TOKEN"))
