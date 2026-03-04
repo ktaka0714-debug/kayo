@@ -18,10 +18,10 @@ async def on_ready():
 @bot.slash_command(name="vct_analytics", description="世界統合メタ統計を表示します")
 @option("map_name", description="マップ名を選択", choices=[
     "ascent", "bind", "haven", "icebox", "lotus", "sunset", "abyss", 
-    "fracture", "pearl", "split", "breeze", "glitch", "corrode"  # カロードを追加
+    "fracture", "pearl", "split", "breeze", "corrode"
 ])
 async def vct_analytics(ctx, map_name: str):
-    # ここがインデント（スペース4つ）されている必要があります
+    # この下の2行が必ず「半角スペース4つ」で始まっている必要があります
     result = map_data.get(map_name, f"⚠️ {map_name} のデータはまだ届いていません。GASを実行してください。")
     await ctx.respond(result)
 
@@ -39,8 +39,6 @@ def run_flask():
     app.run(host='0.0.0.0', port=10000)
 
 if __name__ == "__main__":
-    # Flaskを別スレッドで起動
     t = threading.Thread(target=run_flask)
     t.start()
-    # Discordボットを起動
     bot.run(os.getenv('DISCORD_TOKEN'))
