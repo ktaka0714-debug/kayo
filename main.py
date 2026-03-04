@@ -7,9 +7,9 @@ from discord import option
 # Renderの環境変数から情報を取得
 # ※もしエラーが出る場合は、[int(os.environ.get("DEBUG_GUILD"))] の部分を 
 # 直接あなたのサーバーID（例：[123456789]）に書き換えると確実です。
-bot = discord.Bot(debug_guilds=[int(os.environ.get("DEBUG_GUILD"))])
-API_URL = os.environ.get("VLR_GG_API")
 
+API_URL = os.environ.get("VLR_GG_API")
+bot = discord.Bot()
 @bot.slash_command(name="vlr_best_comp", description="各マップの最高勝率エージェント構成を表示します")
 @option("map_name", description="マップ名を選択", choices=["Ascent", "Bind", "Haven", "Icebox", "Lotus", "Sunset", "Abyss"])
 async def best_comp(ctx, map_name: str):
