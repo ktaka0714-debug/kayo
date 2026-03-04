@@ -4,7 +4,7 @@ from discord import option
 
 bot = discord.Bot()
 
-# 各マップのデータを整理（ユーザーが選んだものだけを表示）
+# 最新のVCTプロ統計データ（直近30日）
 MAP_STATS = {
     "Bind": [
         "1. Gentle Mates (4勝): Neon/Waylay/Skye/Viper/Astra (4回)",
@@ -57,6 +57,20 @@ MAP_STATS = {
     ]
 }
 
-# ここで「ユーザーに選ばせる」設定をしています
 @bot.slash_command(name="vct_analytics", description="知りたいマップのVCT勝利数TOP5チームを表示します")
-@option("map_name", description="マップ名を選択してください", choices=["Ascent", "Bind", "Haven", "Icebox", "Lotus", "
+@option("map_name", description="マップ名を選択してください", choices=["Ascent", "Bind", "Haven", "Icebox", "Lotus", "Sunset", "Abyss"])
+async def vct_analytics(ctx, map_name: str):
+    await ctx.defer()
+    data_list = MAP_STATS.get(map_name)
+    
+    embed = discord.Embed(
+        title=f"📊 {map_name} VCT勝利数TOP5（直近30日）",
+        description=f"**{map_name}** で結果を残しているプロチームの構成です。",
+        color=0x00ffff
+    )
+    embed.add_field(name="📋 順位. チーム (勝利数): 構成 (使用回数)", value="\n".join(data_list), inline=False)
+    embed.set_footer(text="Data source: VLR.gg Professional Analytics")
+    await ctx.followup.send(embed=embed)
+
+@bot.event
+async def on_
