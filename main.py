@@ -73,4 +73,8 @@ async def vct_analytics(ctx, map_name: str):
     await ctx.followup.send(embed=embed)
 
 @bot.event
-async def on_
+async def on_ready():
+    print(f"Logged in as {bot.user}")
+    await bot.sync_commands()
+
+bot.run(os.environ.get("DISCORD_TOKEN"))
