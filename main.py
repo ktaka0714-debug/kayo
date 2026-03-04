@@ -18,7 +18,7 @@ async def on_ready():
 @bot.slash_command(name="vct_analytics", description="世界統合メタ統計を表示します")
 @option("map_name", description="マップ名を選択", choices=[
     "ascent", "bind", "haven", "icebox", "lotus", "sunset", "abyss", 
-    "fracture", "pearl", "split", "breeze", "glitch", "kroad"  # カロードを追加
+    "fracture", "pearl", "split", "breeze", "glitch", "corrode"  # カロードを追加
 ])
 async def vct_analytics(ctx, map_name: str):
     # ここがインデント（スペース4つ）されている必要があります
